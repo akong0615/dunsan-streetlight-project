@@ -1,1 +1,109 @@
-첫번째 화면입니다.
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>대전 둔산동 가로등 현황 및 추가 설치 제안</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { height: 100%; width: 100%; }
+    .title-box {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      letter-spacing: 0.2px;
+      pointer-events: none;
+    }
+    .leaflet-control-layers { font-size: 14px; }
+    .loading {
+      position: fixed;
+      bottom: 14px;
+      left: 14px;
+      z-index: 9999;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title-box">대전 둔산동 가로등 현황 및 추가 설치 제안</div>
+  <div id="map"></div>
+  <div id="loading" class="loading">가로등 데이터 불러오는 중…</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <script>
+    const center = [36.354405, 127.382028];
+    const map = L.map('map').setView(center, 15);
+
+    // Base layers
+    const night = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20 }
+    );
+
+    const day = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }
+    );
+
+    night.addTo(map); // default
+
+    L.control.layers({ '밤': night, '낮': day }, null, { collapsed: false }).addTo(map);
+
+    // Efficient point rendering via canvas
+    const renderer = L.canvas({ padding: 0.5 });
+
+    function style() {
+      return {
+        radius: 2.5,
+        color: '#2b7bff',
+        weight: 1,
+        fillColor: '#2b7bff',
+        fillOpacity: 0.75,
+        renderer
+      };
+    }
+
+    fetch('./dunsan_streetlights.geojson')
+      .then(res => {
+        if (!res.ok) throw new Error('GeoJSON load failed: ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        const layer = L.geoJSON(data, {
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, style()),
+          onEachFeature: (feature, layer) => {
+            const id = feature?.properties?.관리번호;
+            if (id != null) layer.bindTooltip('관리번호: ' + id, { direction: 'top', opacity: 0.9 });
+          }
+        }).addTo(map);
+
+        try { map.fitBounds(layer.getBounds(), { padding: [20, 20] }); } catch (e) {}
+
+        document.getElementById('loading').style.display = 'none';
+      })
+      .catch(err => {
+        console.error(err);
+        const el = document.getElementById('loading');
+        el.textContent = '데이터 로드 실패: ' + err.message;
+      });
+  </script>
+</body>
+</html>
+
