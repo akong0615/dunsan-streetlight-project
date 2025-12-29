@@ -30,26 +30,96 @@
       font-weight: 600;
       letter-spacing: 0.3px;
       position: relative;
+      padding: 0 14px;
+      box-sizing: border-box;
     }
 
     header .title {
       pointer-events: none;
+      text-align: center;
+      line-height: 1.1;
     }
 
-    /* Toggle container on the right */
-    header .toggle {
+    /* Pretty segmented toggle (right) */
+    .seg-toggle {
       position: absolute;
       right: 14px;
-      display: flex;
-      gap: 8px;
-      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      user-select: none;
     }
 
-    header .toggle label {
-      display: flex;
+    .seg-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .seg-toggle label {
+      position: relative;
+      display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.82);
       cursor: pointer;
+      transition: color 160ms ease;
+      white-space: nowrap;
+    }
+
+    /* Icons */
+    .seg-toggle .ico {
+      width: 14px;
+      height: 14px;
+      display: inline-block;
+    }
+    .seg-toggle .ico svg {
+      width: 14px;
+      height: 14px;
+      display: block;
+      fill: currentColor;
+      opacity: 0.9;
+    }
+
+    /* Sliding pill */
+    .seg-toggle .pill {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      height: calc(100% - 6px);
+      width: calc(50% - 3px);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.22);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22),
+                  0 4px 14px rgba(0,0,0,0.25);
+      transition: transform 220ms ease;
+    }
+
+    /* Active label color */
+    #mode-night:checked ~ .labels label[for="mode-night"],
+    #mode-day:checked   ~ .labels label[for="mode-day"] {
+      color: #ffffff;
+    }
+
+    /* Move pill on day */
+    #mode-day:checked ~ .pill {
+      transform: translateX(100%);
+    }
+
+    .seg-toggle .labels {
+      position: relative;
+      display: inline-flex;
+      z-index: 1;
     }
 
     /* Map container */
@@ -73,18 +143,25 @@
     .home-btn {
       position: absolute;
       top: 70px;
-      left: 53px;
+      left: 52px;
       z-index: 999;
       background: rgba(11,42,74,0.85);
       color: #fff;
       border: 0;
       padding: 8px 10px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 13px;
       cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     }
     .home-btn:hover {
       background: rgba(11,42,74,1);
+    }
+
+    /* Small screens: reduce title size */
+    @media (max-width: 520px) {
+      header { font-size: 15px; }
+      .seg-toggle { right: 10px; transform: scale(0.95); transform-origin: right center; }
     }
   </style>
 </head>
@@ -92,15 +169,28 @@
 
   <header>
     <div class="title">대전 둔산동 가로등 현황 및 추가 설치 제안</div>
-    <div class="toggle">
-      <label>
-        <input type="radio" name="basemap" value="night" checked />
-        밤 지도
-      </label>
-      <label>
-        <input type="radio" name="basemap" value="day" />
-        낮 지도
-      </label>
+
+    <!-- Pretty toggle -->
+    <div class="seg-toggle" aria-label="배경 지도 선택">
+      <input id="mode-night" type="radio" name="basemap" value="night" checked />
+      <input id="mode-day"   type="radio" name="basemap" value="day" />
+      <div class="labels">
+        <label for="mode-night" title="밤 지도">
+          <span class="ico" aria-hidden="true">
+            <!-- moon -->
+            <svg viewBox="0 0 24 24"><path d="M21 14.5A8.5 8.5 0 0 1 9.5 3a7 7 0 1 0 11.5 11.5Z"/></svg>
+          </span>
+          밤
+        </label>
+        <label for="mode-day" title="낮 지도">
+          <span class="ico" aria-hidden="true">
+            <!-- sun -->
+            <svg viewBox="0 0 24 24"><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12Zm0-16a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1Zm0 18a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM4.22 5.64a1 1 0 0 1 1.41 0l.7.7A1 1 0 1 1 4.93 7.75l-.7-.7a1 1 0 0 1 0-1.41Zm14.45 14.45a1 1 0 0 1 1.41 0l.7.7a1 1 0 1 1-1.41 1.41l-.7-.7a1 1 0 0 1 0-1.41ZM2 13a1 1 0 1 1 0-2h1a1 1 0 1 1 0 2H2Zm18 0a1 1 0 1 1 0-2h1a1 1 0 1 1 0 2h-1ZM4.22 20.36a1 1 0 0 1 0-1.41l.7-.7a1 1 0 1 1 1.41 1.41l-.7.7a1 1 0 0 1-1.41 0ZM18.67 6.34a1 1 0 0 1 0-1.41l.7-.7a1 1 0 1 1 1.41 1.41l-.7.7a1 1 0 0 1-1.41 0Z"/></svg>
+          </span>
+          낮
+        </label>
+      </div>
+      <div class="pill" aria-hidden="true"></div>
     </div>
   </header>
 
@@ -127,20 +217,25 @@
       { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }
     );
 
+    // default night
     night.addTo(map);
 
-    // Toggle logic
-    document.querySelectorAll('input[name="basemap"]').forEach(radio => {
-      radio.addEventListener('change', e => {
-        if (e.target.value === 'night') {
-          map.removeLayer(day);
-          night.addTo(map);
-        } else {
-          map.removeLayer(night);
-          day.addTo(map);
-        }
-      });
-    });
+    // Toggle logic (beautiful UI uses radios)
+    const nightRadio = document.getElementById('mode-night');
+    const dayRadio = document.getElementById('mode-day');
+
+    function applyBaseMap(mode) {
+      if (mode === 'night') {
+        map.removeLayer(day);
+        night.addTo(map);
+      } else {
+        map.removeLayer(night);
+        day.addTo(map);
+      }
+    }
+
+    nightRadio.addEventListener('change', () => applyBaseMap('night'));
+    dayRadio.addEventListener('change', () => applyBaseMap('day'));
 
     const renderer = L.canvas({ padding: 0.5 });
     function style() {
@@ -159,11 +254,13 @@
     });
 
     fetch('./dunsan_streetlights.geojson')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('GeoJSON load failed: ' + res.status);
+        return res.json();
+      })
       .then(data => {
         L.geoJSON(data, {
-          pointToLayer: (feature, latlng) =>
-            L.circleMarker(latlng, style())
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, style())
         }).addTo(map);
 
         document.getElementById('loading').style.display = 'none';
