@@ -14,31 +14,48 @@
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                    Roboto, "Noto Sans KR", Arial, sans-serif;
-      background: #111;
+      background: #0b1a2a;
       color: #fff;
     }
 
-    /* Header (title area) */
+    /* Header */
     header {
       height: 56px;
-      background: #111;
-      border-bottom: 1px solid #222;
+      background: #0b2a4a; /* deep blue */
+      border-bottom: 1px solid #0f3a63;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 18px;
       font-weight: 600;
       letter-spacing: 0.3px;
+      position: relative;
+    }
+
+    header .title {
+      pointer-events: none;
+    }
+
+    /* Toggle container on the right */
+    header .toggle {
+      position: absolute;
+      right: 14px;
+      display: flex;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    header .toggle label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
     }
 
     /* Map container */
     #map {
       height: calc(100% - 56px);
       width: 100%;
-    }
-
-    .leaflet-control-layers {
-      font-size: 14px;
     }
 
     .loading {
@@ -58,7 +75,7 @@
       top: 70px;
       left: 12px;
       z-index: 999;
-      background: rgba(0,0,0,0.65);
+      background: rgba(11,42,74,0.85);
       color: #fff;
       border: 0;
       padding: 8px 10px;
@@ -67,14 +84,24 @@
       cursor: pointer;
     }
     .home-btn:hover {
-      background: rgba(0,0,0,0.8);
+      background: rgba(11,42,74,1);
     }
   </style>
 </head>
 <body>
 
   <header>
-    대전 둔산동 가로등 현황 및 추가 설치 제안
+    <div class="title">대전 둔산동 가로등 현황 및 추가 설치 제안</div>
+    <div class="toggle">
+      <label>
+        <input type="radio" name="basemap" value="night" checked />
+        밤
+      </label>
+      <label>
+        <input type="radio" name="basemap" value="day" />
+        낮
+      </label>
+    </div>
   </header>
 
   <div id="map"></div>
@@ -102,14 +129,20 @@
 
     night.addTo(map);
 
-    L.control.layers(
-      { '밤': night, '낮': day },
-      null,
-      { collapsed: false }
-    ).addTo(map);
+    // Toggle logic
+    document.querySelectorAll('input[name="basemap"]').forEach(radio => {
+      radio.addEventListener('change', e => {
+        if (e.target.value === 'night') {
+          map.removeLayer(day);
+          night.addTo(map);
+        } else {
+          map.removeLayer(night);
+          day.addTo(map);
+        }
+      });
+    });
 
     const renderer = L.canvas({ padding: 0.5 });
-
     function style() {
       return {
         radius: 2.5,
@@ -136,8 +169,7 @@
         document.getElementById('loading').style.display = 'none';
       })
       .catch(err => {
-        document.getElementById('loading').textContent =
-          '데이터 로드 실패';
+        document.getElementById('loading').textContent = '데이터 로드 실패';
         console.error(err);
       });
   </script>
