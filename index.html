@@ -204,7 +204,34 @@
       border:none;
       background: var(--road);
     }
-  </style>
+  /* ===== Meta grid (mobile friendly) ===== */
+.meta-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+.meta-item{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--chip);
+  font-size: 12px;
+  line-height: 1.25;
+}
+.meta-k{ color: var(--muted); white-space: nowrap; }
+.meta-v{ color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px){
+  #side{ width: 100%; max-width: 100vw; }
+  #wrap{ flex-direction: column; }
+  #map{ height: 55vh; min-height: 360px; }
+  .meta-grid{ grid-template-columns: 1fr; }
+}
+</style>
 </head>
 
 <body class="night">
@@ -243,6 +270,7 @@
         <button class="btn" id="dayBtn">
                    <svg viewBox="0 0 24 24"><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12Zm0-16a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1Zm0 18a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM4.22 5.64a1 1 0 0 1 1.41 0l.7.7A1 1 0 1 1 4.93 7.75l-.7-.7a1 1 0 0 1 0-1.41Zm14.45 14.45a1 1 0 0 1 1.41 0l.7.7a1 1 0 1 1-1.41 1.41l-.7-.7a1 1 0 0 1 0-1.41ZM2 13a1 1 0 1 1 0-2h1a1 1 0 1 1 0 2H2Zm18 0a1 1 0 1 1 0-2h1a1 1 0 1 1 0 2h-1ZM4.22 20.36a1 1 0 0 1 0-1.41l.7-.7a1 1 0 1 1 1.41 1.41l-.7.7a1 1 0 0 1-1.41 0ZM18.67 6.34a1 1 0 0 1 0-1.41l.7-.7a1 1 0 1 1 1.41 1.41l-.7.7a1 1 0 0 1-1.41 0Z"></path></svg> 낮
         </button>
+        <button class="btn" id="toggleGlow" title="밤 모드에서 조도(불빛) 표시를 켜고 끕니다">💡 불빛 OFF</button>
         <button class="btn" id="fit" style="margin-left:auto;">지도 전체</button>
       </div>
     </div>
@@ -254,17 +282,17 @@
         <button class="btn active" id="toggleExist">기존 가로등</button>
         <button class="btn active" id="toggleRec">추천 가로등</button>
         <button class="btn active" id="togglePolice">경찰서</button>
-      </div>
+</div>
 
       <div class="row" style="margin-top:10px;">
-        <span class="stat" id="meta"></span>
+        <div class="meta-grid" id="meta"></div>
       </div>
 
       <div class="legend" aria-label="범례">
         <div class="legend-item"><span class="swatch-road"></span>도로(근사 선분)</div>
         <div class="legend-item"><span class="swatch" style="background:#1f77b4;"></span>기존 가로등(표본)</div>
         <div class="legend-item"><span class="swatch" style="background:#ff7f0e;"></span>추천 가로등</div>
-        <div class="legend-item"><span class="swatch" style="background:#9467bd;"></span>경찰서</div>
+        <div class="legend-item"><span class="swatch" style="background:#a78bfa;"></span>경찰서</div>
       </div>
 
       <div class="muted small" style="margin-top:10px;">
@@ -311,6 +339,62 @@ let existingLayer = L.layerGroup();
 let recLayer = L.layerGroup();
 let policeLayer = L.layerGroup();
 
+// ===== Glow(조도) 레이어: 밤 모드에서만 표시, 버튼으로 ON/OFF =====
+const glowLayer = L.layerGroup().addTo(map);
+let glowEnabled = false;
+
+const GLOW_EXIST = { color:'#1f77b4', outer:18, outerO:0.10, inner:9, innerO:0.18 };
+const GLOW_REC   = { color:'#ff7f0e', outer:18, outerO:0.10, inner:9, innerO:0.18 };
+
+
+const GLOW_POLICE = { color:'#a78bfa', outer:18, outerO:0.10, inner:9, innerO:0.18 };
+function addGlow(latlng, spec){
+  L.circleMarker(latlng,{radius:spec.outer, weight:0, opacity:0, fillColor:spec.color, fillOpacity:spec.outerO, interactive:false}).addTo(glowLayer);
+  L.circleMarker(latlng,{radius:spec.inner, weight:0, opacity:0, fillColor:spec.color, fillOpacity:spec.innerO, interactive:false}).addTo(glowLayer);
+}
+
+function buildGlow(){
+  glowLayer.clearLayers();
+  const isNight = document.body.classList.contains('night');
+  if (!isNight || !glowEnabled) return;
+
+  if (map.hasLayer(existingLayer) && Array.isArray(DATA.existingLights)){
+    for (const p of DATA.existingLights) addGlow([p[0], p[1]], GLOW_EXIST);
+  }
+  if (map.hasLayer(recLayer) && Array.isArray(DATA.recommendedLights)){
+    for (const r of DATA.recommendedLights) addGlow([r.lat, r.lon], GLOW_REC);
+  }
+
+  if (map.hasLayer(policeLayer) && Array.isArray(DATA.police)){
+    for (const s of DATA.police){
+      if (typeof s.lat === 'number' && typeof s.lon === 'number'){
+        addGlow([s.lat, s.lon], GLOW_POLICE);
+      }
+    }
+  }
+
+}
+
+function syncGlowBtn(){
+  const b = document.getElementById('toggleGlow');
+  if (!b) return;
+
+  const isNight = document.body.classList.contains('night');
+  if (!isNight){
+    b.textContent = '💡 불빛(밤 전용)';
+    b.classList.remove('active');
+    b.disabled = true;
+    b.style.opacity = '0.55';
+    b.style.cursor = 'not-allowed';
+    return;
+  }
+
+  b.disabled = false;
+  b.style.opacity = '';
+  b.style.cursor = '';
+  b.textContent = glowEnabled ? '💡 불빛 ON' : '💡 불빛 OFF';
+  b.classList.toggle('active', glowEnabled);
+}
 const roadPolylines = [];
 
 function roadStyle() {
@@ -327,34 +411,56 @@ function addPoint(layer, lat, lon, opts) {
   }, opts)).addTo(layer);
 }
 
+function addLightWithGlow(layer, lat, lon, baseOpts, glowOpts) {
+  // (요청 반영) 기본 마커 주변의 옅은 바깥 원(halo)을 제거합니다.
+  // 불빛(조도) 효과는 별도의 glowLayer(buildGlow)에서 토글로 제어합니다.
+  return addPoint(layer, lat, lon, baseOpts);
+}
+
+
+function redrawLights() {
+  existingLayer.clearLayers();
+  recLayer.clearLayers();
+
+  // Existing lights (downsampled)
+  for (const p of DATA.existingLights) {
+    addLightWithGlow(
+      existingLayer,
+      p[0], p[1],
+      { radius: 2, opacity: 0.9, fillOpacity: 0.45, color: '#1f77b4', fillColor: '#1f77b4', weight: 1 },
+      { fillColor: '#8fd3ff', color: '#8fd3ff', radius: 12, fillOpacity: 0.10 }
+    );
+  }
+
+  // Recommended lights
+  for (const r of DATA.recommendedLights) {
+    // glow (non-interactive) + base marker (interactive)
+    const m = addPoint(recLayer, r.lat, r.lon, { radius: 4, weight: 1.2, fillOpacity: 0.85, color:'#ff7f0e', fillColor:'#ff7f0e' });
+    const html = `
+      <b>${r.name}</b><br/>
+      동: ${r.dong}<br/>
+      순번: ${r.rank}<br/>
+      도로유형: ${r.road_type}
+    `;
+    m.bindPopup(html);
+  }
+}
+
+
 // Roads
 for (const seg of DATA.roadSegments) {
   segToPolyline(seg).addTo(roadLayer);
 }
 roadLayer.addTo(map);
 
-// Existing lights (downsampled)
-for (const p of DATA.existingLights) {
-  addPoint(existingLayer, p[0], p[1], { radius: 2, opacity: 0.9, fillOpacity: 0.45, color: '#1f77b4', fillColor: '#1f77b4', weight: 1 });
-}
+// Existing & Recommended lights (with night glow)
+redrawLights();
 existingLayer.addTo(map);
-
-// Recommended lights
-for (const r of DATA.recommendedLights) {
-  const m = addPoint(recLayer, r.lat, r.lon, { radius: 4, weight: 1.2, fillOpacity: 0.85, color:'#ff7f0e', fillColor:'#ff7f0e' });
-  const html = `
-    <b>${r.name}</b><br/>
-    동: ${r.dong}<br/>
-    순번: ${r.rank}<br/>
-    도로유형: ${r.road_type}
-  `;
-  m.bindPopup(html);
-}
 recLayer.addTo(map);
 
 // Police
 for (const p of DATA.police) {
-  const m = addPoint(policeLayer, p.lat, p.lon, { radius: 6, weight: 1.6, fillOpacity: 0.75, color: '#9467bd', fillColor: '#9467bd' });
+  const m = addPoint(policeLayer, p.lat, p.lon, { radius: 6, weight: 1.6, fillOpacity: 0.75, color: '#a78bfa', fillColor: '#a78bfa' });
   m.bindPopup(`<b>${p.name}</b> (${p.type})<br/>범죄(계): ${p.total}`);
 }
 policeLayer.addTo(map);
@@ -377,6 +483,9 @@ function toggleLayer(btn, layer) {
     const on = map.hasLayer(layer);
     if (on) map.removeLayer(layer); else map.addLayer(layer);
     btn.classList.toggle('active', !on);
+    // 조도도 레이어 상태에 맞춰 갱신
+    syncGlowBtn();
+    buildGlow();
   });
 }
 
@@ -407,12 +516,11 @@ toggleLayer(document.getElementById('togglePolice'), policeLayer);
 
 // Meta (복원)
 document.getElementById('meta').innerHTML = `
-  도로&nbsp; 점 &nbsp;&nbsp;: ${DATA.meta.roads_points_used.toLocaleString()}개 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  기존 가로등(표본) : ${DATA.meta.existing_lights_used.toLocaleString()}개<br>
-  도로 선분 : ${DATA.meta.road_segments_used.toLocaleString()}개&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  추천 가로등 : ${DATA.meta.recommended_lights.toLocaleString()}개
+  <div class="meta-item"><span class="meta-k">도로 점</span><span class="meta-v">${DATA.meta.roads_points_used.toLocaleString()}개</span></div>
+  <div class="meta-item"><span class="meta-k">기존 가로등(표본)</span><span class="meta-v">${DATA.meta.existing_lights_used.toLocaleString()}개</span></div>
+  <div class="meta-item"><span class="meta-k">도로 선분</span><span class="meta-v">${DATA.meta.road_segments_used.toLocaleString()}개</span></div>
+  <div class="meta-item"><span class="meta-k">추천 가로등</span><span class="meta-v">${DATA.meta.recommended_lights.toLocaleString()}개</span></div>
 `;
-
 // Youth table (복원)
 const tbody = document.querySelector('#youthTbl tbody');
 for (const r of DATA.youth) {
@@ -450,13 +558,33 @@ function applyTheme(isNight) {
   for (const pl of roadPolylines) {
     pl.setStyle(st);
   }
+
+
+  // refresh lights to apply night glow
+  redrawLights();
+
+  syncGlowBtn();
+  buildGlow();
+
 }
 
 nightBtn.addEventListener('click', () => applyTheme(true));
 dayBtn.addEventListener('click', () => applyTheme(false));
 
+// 불빛 토글(밤 전용)
+const toggleGlowBtn = document.getElementById('toggleGlow');
+toggleGlowBtn?.addEventListener('click', () => {
+  if (!document.body.classList.contains('night')) return; // 밤 전용
+  glowEnabled = !glowEnabled;
+  syncGlowBtn();
+  buildGlow();
+});
+
 // keep initial night styling
 applyTheme(true);
+
+syncGlowBtn();
+buildGlow();
 </script>
 </body>
 </html>
