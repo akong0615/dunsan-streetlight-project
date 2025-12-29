@@ -1,3 +1,1 @@
-dunsan streetlight project
-
 대전 둔산동 지역에 설치된 가로등 위치를 지도 위에 시각화한 프로젝트입니다.
