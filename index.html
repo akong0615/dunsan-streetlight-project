@@ -37,10 +37,26 @@
       border-radius: 8px;
       font-size: 13px;
     }
+    .home-btn {
+      position: fixed;
+      top: 62px;
+      left: 12px;
+      z-index: 9999;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .home-btn:hover { background: rgba(0,0,0,0.7); }
   </style>
 </head>
 <body>
   <div class="title-box">대전 둔산동 가로등 현황 및 추가 설치 제안</div>
+  <button class="home-btn" id="homeBtn">둔산동 보기</button>
   <div id="map"></div>
   <div id="loading" class="loading">가로등 데이터 불러오는 중…</div>
 
@@ -48,27 +64,26 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
   <script>
-    const center = [36.354405, 127.382028];
-    const map = L.map('map').setView(center, 15);
+    const HOME_CENTER = [36.354405, 127.382028];
+    const HOME_ZOOM = 15;  // ? 처음(좋았던) 화면 느낌 유지
+
+    const map = L.map('map').setView(HOME_CENTER, HOME_ZOOM);
 
     // Base layers
     const night = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
       { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20 }
     );
-
     const day = L.tileLayer(
       'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }
     );
 
-    night.addTo(map); // default
-
+    night.addTo(map); // default: night
     L.control.layers({ '밤': night, '낮': day }, null, { collapsed: false }).addTo(map);
 
     // Efficient point rendering via canvas
     const renderer = L.canvas({ padding: 0.5 });
-
     function style() {
       return {
         radius: 2.5,
@@ -80,21 +95,25 @@
       };
     }
 
+    // Home button
+    document.getElementById('homeBtn').addEventListener('click', () => {
+      map.setView(HOME_CENTER, HOME_ZOOM);
+    });
+
+    // ? 중요: fitBounds로 자동 확대/축소하지 않음 (outlier 때문에 화면이 멀어지는 문제 방지)
     fetch('./dunsan_streetlights.geojson')
       .then(res => {
         if (!res.ok) throw new Error('GeoJSON load failed: ' + res.status);
         return res.json();
       })
       .then(data => {
-        const layer = L.geoJSON(data, {
+        L.geoJSON(data, {
           pointToLayer: (feature, latlng) => L.circleMarker(latlng, style()),
           onEachFeature: (feature, layer) => {
             const id = feature?.properties?.관리번호;
             if (id != null) layer.bindTooltip('관리번호: ' + id, { direction: 'top', opacity: 0.9 });
           }
         }).addTo(map);
-
-        try { map.fitBounds(layer.getBounds(), { padding: [20, 20] }); } catch (e) {}
 
         document.getElementById('loading').style.display = 'none';
       })
@@ -106,4 +125,3 @@
   </script>
 </body>
 </html>
-
